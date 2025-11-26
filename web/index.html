@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+  
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="reel_on_go">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>reel_on_go</title>
+  <link rel="manifest" href="manifest.json">
+
+
+  <!-- 🔥 ADD FIREBASE CONFIG HERE -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBOVgJ5jOy3I739jQOoyO83tm_NiDrPlrg",
+      authDomain: "reelongo-b6c8c.firebaseapp.com",
+      projectId: "reelongo-b6c8c",
+      storageBucket: "reelongo-b6c8c.firebasestorage.app",
+      messagingSenderId: "968762389620",
+      appId: "1:968762389620:web:0fd845bc65de710238cd21",
+      measurementId: "G-TM5ZYN4MFN"
+    };
+
+    initializeApp(firebaseConfig);
+  </script>
+  <!-- 🔥 END FIREBASE CONFIG -->
+<script src="https://www.google.com/recaptcha/api.js"></script>
+
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+  <div id="recaptcha-container"></div>
+</body>
+</html>

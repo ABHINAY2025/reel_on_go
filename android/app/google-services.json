@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "968762389620",
+    "project_id": "reelongo-b6c8c",
+    "storage_bucket": "reelongo-b6c8c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:968762389620:android:dfe1893ee53d992538cd21",
+        "android_client_info": {
+          "package_name": "com.example.reel_on_go"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3o_xn_fZWg7lfSY7RjKsPmo3yi7410jA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
