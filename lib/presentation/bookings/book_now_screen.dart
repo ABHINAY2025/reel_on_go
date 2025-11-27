@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-
 import '../screens/checkout/checkout_screen.dart';
 
 class BookNowScreen extends StatefulWidget {
-  const BookNowScreen({super.key});
+  final String phone;   // 🔥 phone passed from HomeScreen
+
+  const BookNowScreen({super.key, required this.phone});
 
   @override
   State<BookNowScreen> createState() => _BookNowScreenState();
@@ -15,11 +16,14 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String phone = widget.phone;   // 🔥 use phone everywhere
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text("Book Now"),
+        foregroundColor: Colors.white,
       ),
 
       body: Column(
@@ -47,7 +51,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
               children: _getPlans()
                   .asMap()
                   .entries
-                  .map((entry) => buildPlanCard(entry.value, entry.key))
+                  .map((entry) => buildPlanCard(entry.value, entry.key, phone))
                   .toList(),
             ),
           ),
@@ -92,14 +96,13 @@ class _BookNowScreenState extends State<BookNowScreen> {
   }
 
   /// ---------- PLAN CARD ----------
-  Widget buildPlanCard(Map<String, dynamic> plan, int index) {
+  Widget buildPlanCard(Map<String, dynamic> plan, int index, String phone) {
     bool isSelected = currentPage == index;
 
     return Padding(
       padding: const EdgeInsets.only(right: 20, bottom: 10),
       child: Stack(
         children: [
-          /// BLUE BORDER WHEN SELECTED
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             width: MediaQuery.of(context).size.width * 0.88,
@@ -123,7 +126,6 @@ class _BookNowScreenState extends State<BookNowScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// TITLE
                 Text(
                   plan["title"],
                   style: const TextStyle(
@@ -135,7 +137,6 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
                 const SizedBox(height: 4),
 
-                /// SUBTITLE
                 Text(
                   plan["subtitle"],
                   style: const TextStyle(
@@ -146,7 +147,6 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
                 const SizedBox(height: 4),
 
-                /// DESCRIPTION
                 Text(
                   plan["description"],
                   style: const TextStyle(
@@ -158,7 +158,6 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
                 const SizedBox(height: 14),
 
-                /// PRICE + GST
                 Row(
                   children: [
                     Text(
@@ -194,9 +193,8 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
                 const SizedBox(height: 10),
 
-                /// FEATURES LIST
-                ...plan["features"].map<Widget>(
-                  (f) => Padding(
+                ...plan["features"].map<Widget>((f) {
+                  return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Row(
                       children: [
@@ -217,40 +215,43 @@ class _BookNowScreenState extends State<BookNowScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ),
+                  );
+                }).toList(),
 
                 const Spacer(),
 
-                /// BOOK NOW BUTTON
+                /// ---------- BOOK NOW BUTTON ----------
                 SizedBox(
                   width: double.infinity,
-                  child:ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CheckoutScreen(plan: plan)),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5E1F),
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CheckoutScreen(
+                            plan: plan,
+                            phone: phone, // 🔥 PASS PHONE HERE
                           ),
                         ),
-                        child: const Text(
-                          "Book Now",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      )
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF5E1F),
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      "Book Now",
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
 
-          /// ---------- SELECTED TICK ICON ----------
           if (isSelected)
             Positioned(
               right: plan["tag"] != null ? 60 : 16,
@@ -258,7 +259,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
               child: Container(
                 padding: const EdgeInsets.all(7),
                 decoration: const BoxDecoration(
-                  color: const Color(0xFFFF5E1F),
+                  color: Color(0xFFFF5E1F),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -269,7 +270,6 @@ class _BookNowScreenState extends State<BookNowScreen> {
               ),
             ),
 
-          /// ---------- TAG ----------
           if (plan["tag"] != null)
             Positioned(
               right: 16,
@@ -297,7 +297,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
 }
 
 /// ------------------------------------------------------------
-///                   PLAN DATA
+///                   PLAN DATA (unchanged)
 /// ------------------------------------------------------------
 
 final quickPlans = [

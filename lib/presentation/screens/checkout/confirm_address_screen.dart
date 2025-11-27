@@ -58,13 +58,40 @@ class _ConfirmAddressScreenState extends State<ConfirmAddressScreen> {
 
   Widget _mainUI() {
     return WillPopScope(
-      onWillPop: () async {
-        if (!_validateFields()) {
-          showTopToast(context, "Please fill all fields");
-          return false;
-        }
-        return true;
-      },
+onWillPop: () async {
+  if (!_validateFields()) {
+    showTopToast(context, "Please fill all fields");
+    return false; // Block back press
+  }
+
+  // Fields are filled → Ask confirmation
+  final shouldLeave = await showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: Colors.black,
+      title: const Text(
+        "Discard Address?",
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        "You filled all fields. Do you want to go back without saving?",
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("No", style: TextStyle(color: Colors.orange)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text("Yes", style: TextStyle(color: Colors.redAccent)),
+        ),
+      ],
+    ),
+  );
+
+  return shouldLeave ?? false;
+},
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(

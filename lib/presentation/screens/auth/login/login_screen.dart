@@ -87,7 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   onPressed: () async {
-                    if (phoneController.text.length != 10) {
+                    String phone = phoneController.text.trim();
+
+                    if (phone.length != 10) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("Please enter a valid phone number"),
@@ -97,12 +99,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       return;
                     }
 
-                    /// 🔥 LOGIN WITHOUT OTP
-                    bool success =
-                        await auth.loginWithoutOTP(phoneController.text);
+                    // 🔥 Clean number to ensure only digits
+                    String clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
 
-                    if (success) {
-                      Navigator.pushReplacementNamed(context, AppRoutes.location);
+                    // Call AuthController
+                    String result = await auth.loginUser(clean);
+
+                    if (result == "existing") {
+                      // Login → Go Home
+                      Navigator.pushReplacementNamed(
+                        context,
+                        AppRoutes.home,
+                        arguments: clean,
+                      );
+                    } else if (result == "new") {
+                      // New user → Location setup
+                      Navigator.pushReplacementNamed(
+                        context,
+                        AppRoutes.location,
+                        arguments: clean,
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Something went wrong"),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
                     }
                   },
                   child: auth.loading

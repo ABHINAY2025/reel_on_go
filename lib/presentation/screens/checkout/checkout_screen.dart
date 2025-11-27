@@ -1,7 +1,8 @@
+// 📌 checkout_screen.dart (FINAL UPDATED FOR PHONE PASSING)
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
@@ -27,15 +28,19 @@ const Color kPrimaryOrange = Color(0xFFFF5E1F);
 
 class CheckoutScreen extends StatefulWidget {
   final Map<String, dynamic> plan;
+  final String phone;   // 🔥 REQUIRED PHONE
 
-  const CheckoutScreen({super.key, required this.plan});
+  const CheckoutScreen({
+    super.key,
+    required this.plan,
+    required this.phone,
+  });
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  String? phone;
   String? firstName;
   String? lastName;
   String? gender;
@@ -59,6 +64,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   final TextEditingController songController = TextEditingController();
   final TextEditingController requirementsController = TextEditingController();
+
   String shootMode = "Outdoor";
 
   final int extraHourPrice = 500;
@@ -70,28 +76,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
+    _loadUserName();
     Future.microtask(() => _ensureLocationDetectedOnce());
   }
 
-  Future<void> _loadCurrentUser() async {
+  /// 🔥 LOAD USER NAME + GENDER USING PHONE (NO UID)
+  Future<void> _loadUserName() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        userLoaded = true;
-        setState(() {});
-        return;
-      }
-
-      final snap = await FirebaseFirestore.instance
+      final doc = await FirebaseFirestore.instance
           .collection("users")
-          .where("uid", isEqualTo: user.uid)
-          .limit(1)
+          .doc(widget.phone)
           .get();
 
-      if (snap.docs.isNotEmpty) {
-        final data = snap.docs.first.data();
-        phone = data["phone"];
+      if (doc.exists) {
+        final data = doc.data()!;
         firstName = data["firstName"] ?? "";
         lastName = data["lastName"] ?? "";
         gender = data["gender"] ?? "";
@@ -114,6 +112,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _detectLocation() async {
     setState(() => locating = true);
+
     try {
       final pos = await LocationService.getCurrentPosition();
       if (pos == null) {
@@ -148,17 +147,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   double get tax => subtotal * gstRate;
   double get total => subtotal + tax;
 
+  /// 🔥 CREATE BOOKING (phone passed directly)
   Future<void> _createBooking() async {
     if (!agreed) {
       showTopNotification("Please accept the terms & conditions.");
       return;
     }
-
     if (requirementsController.text.trim().isEmpty) {
       showTopNotification("Shoot requirements cannot be empty!");
       return;
     }
-
     if (!addressConfirmed || selectedAddress == null) {
       showTopNotification("Please add your location details first.");
       return;
@@ -166,20 +164,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     setState(() => loading = true);
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      showTopNotification("User not logged in");
-      setState(() => loading = false);
-      return;
-    }
-
-    final cleanPhone = phone!.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanPhone = widget.phone.replaceAll(RegExp(r'[^0-9]'), '');
     final bookingId = "${cleanPhone}_${DateTime.now().millisecondsSinceEpoch}";
 
     final booking = {
       "bookingId": bookingId,
-      "userPhone": cleanPhone,
-      "userId": user.uid,
+      "userId": cleanPhone, // 🔥 backend uses this
       "userName": "${firstName ?? ''} ${lastName ?? ''}".trim(),
       "userGender": gender ?? "",
       "plan": widget.plan,
@@ -202,12 +192,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               "lat": currentPosition!.latitude,
               "lng": currentPosition!.longitude,
             },
+      "createdAt": DateTime.now().toIso8601String(),
       "status": "pending",
     };
 
     try {
-      final url =
-          Uri.parse("http://10.20.0.4:5008/api/bookings/create");
+      final url = Uri.parse("http://10.20.0.4:5008/api/bookings/create");
 
       final response = await http.post(
         url,
@@ -218,7 +208,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       setState(() => loading = false);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        showTopNotification("Booking created successfully");
+        showTopNotification("Booking created successfully!");
         Navigator.pop(context);
       } else {
         debugPrint("Backend Error: ${response.body}");
@@ -244,25 +234,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           color: Colors.transparent,
           child: SafeArea(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.redAccent,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 6,
-                  )
+                      color: Colors.black.withOpacity(0.3), blurRadius: 6)
                 ],
               ),
               child: Text(
                 message,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -272,7 +260,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     overlay.insert(entry);
-    Future.delayed(const Duration(seconds: 2)).then((_) => entry.remove());
+    Future.delayed(const Duration(seconds: 2))
+        .then((_) => entry.remove());
   }
 
   @override
@@ -291,7 +280,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              UserHeader(firstName: firstName, phone: phone, color: kPrimaryOrange),
+              UserHeader(
+                firstName: firstName,
+                phone: widget.phone,
+                color: kPrimaryOrange,
+              ),
               const SizedBox(height: 18),
 
               LocationCard(
@@ -304,7 +297,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               PlanSummaryCard(
                 plan: plan,
-                onChange: () => Navigator.pushReplacementNamed(context, "/bookNow"),
+                onChange: () =>
+                    Navigator.pushReplacementNamed(context, "/bookNow"),
                 color: kPrimaryOrange,
               ),
               const SizedBox(height: 18),
@@ -319,7 +313,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ExtraHoursCounter(
                 value: extraHours,
                 onInc: () => setState(() => extraHours++),
-                onDec: () => setState(() => extraHours = extraHours > 0 ? extraHours - 1 : 0),
+                onDec: () => setState(
+                    () => extraHours = extraHours > 0 ? extraHours - 1 : 0),
               ),
               const SizedBox(height: 14),
 
@@ -327,9 +322,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 addonExtraReel: addonExtraReel,
                 addonCustomizedEdit: addonCustomizedEdit,
                 addonHandLight: addonHandLight,
-                onToggleExtraReel: (v) => setState(() => addonExtraReel = v),
-                onToggleCustomized: (v) => setState(() => addonCustomizedEdit = v),
-                onToggleHandLight: (v) => setState(() => addonHandLight = v),
+                onToggleExtraReel: (v) =>
+                    setState(() => addonExtraReel = v),
+                onToggleCustomized: (v) =>
+                    setState(() => addonCustomizedEdit = v),
+                onToggleHandLight: (v) =>
+                    setState(() => addonHandLight = v),
                 color: kPrimaryOrange,
                 extraReelPrice: addonExtraReelPrice,
                 customizedPrice: addonCustomizedEditPrice,
@@ -355,15 +353,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(height: 18),
 
-              AgreeTermsTile(value: agreed, onChanged: (v) => setState(() => agreed = v)),
+              AgreeTermsTile(
+                value: agreed,
+                onChanged: (v) => setState(() => agreed = v),
+              ),
               const SizedBox(height: 14),
 
-              PriceSummary(subtotal: subtotal, tax: tax, total: total),
+              PriceSummary(
+                  subtotal: subtotal, tax: tax, total: total),
               const SizedBox(height: 18),
 
               SubmitButton(
                 loading: loading,
-                label: addressConfirmed ? "Proceed to Payment" : "Add Location Details",
+                label: addressConfirmed
+                    ? "Proceed to Payment"
+                    : "Add Location Details",
                 color: kPrimaryOrange,
                 onPressed: () async {
                   if (requirementsController.text.trim().isEmpty) {
@@ -380,7 +384,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ConfirmAddressScreen(phone: phone),
+                        builder: (_) =>
+                            ConfirmAddressScreen(phone: widget.phone),
                       ),
                     );
 
@@ -395,7 +400,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   }
                 },
               ),
-
               const SizedBox(height: 24),
             ],
           ),
@@ -411,4 +415,4 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
-} 
+}

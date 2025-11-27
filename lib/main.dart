@@ -62,14 +62,16 @@ class MyApp extends StatelessWidget {
       // Static Routes
       routes: {
         "/login": (_) => const LoginScreen(),
-        // "/otp": (_) => const OtpScreen(),
+        // "/otp": (_) => const OtpScreen(), //future use
         "/intro": (_) => const IntroScreen(),
         "/location": (_) => const LocationScreen(),
         "/profileSetup": (_) => const ProfileSetupScreen(),
         "/home": (_) => const HomeScreen(),
-        "/bookNow": (_) => const BookNowScreen(),
         "/myBookings": (_) => const MyBookingsScreen(),
-        "/schedule": (_) => const ScheduleScreen(),
+          "/schedule": (context) {
+          final phone = ModalRoute.of(context)!.settings.arguments as String;
+          return ScheduleScreen(phone: phone);
+        },
 
       },
     );

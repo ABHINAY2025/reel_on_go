@@ -8,78 +8,67 @@ class AuthController with ChangeNotifier {
   bool loading = false;
 
   /// -------------------------------------------------------------
-  /// LOGIN WITHOUT OTP  (DEV MODE) — Anonymous + Firestore phone doc
+  /// LOGIN USING MOBILE NUMBER (DEV MODE, NO OTP)
   /// -------------------------------------------------------------
-Future<bool> loginWithoutOTP(String phone) async {
-  try {
-    loading = true;
-    notifyListeners();
-
-    // 1️⃣ Sign in anonymously
-    UserCredential cred = await _auth.signInAnonymously();
-    User user = cred.user!;
-
-    // 2️⃣ Clean phone number for Firestore doc ID
-    String clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // 3️⃣ Create / Update Firestore doc (ID = phone)
-    await FirebaseFirestore.instance
-        .collection("users")
-        .doc(clean)
-        .set({
-      "phone": clean,
-      "uid": user.uid,
-
-      "isLocationSet": false,
-      "isProfileComplete": false,
-      "createdAt": FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    loading = false;
-    notifyListeners();
-    return true;
-
-  } catch (e) {
-    print("DEV Login Error: $e");
-    loading = false;
-    notifyListeners();
-    return false;
-  }
-}
-
-
-  /// -------------------------------------------------------------
-  /// Resolve phone doc ID from logged-in user
-  /// (We MUST get phone from the users collection)
-  /// -------------------------------------------------------------
-  Future<String> _resolvePhone() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
-
-    final snap = await FirebaseFirestore.instance
-        .collection("users")
-        .where("uid", isEqualTo: uid)
-        .limit(1)
-        .get();
-
-    if (snap.docs.isEmpty) {
-      throw Exception("User document not found for UID: $uid");
-    }
-
-    return snap.docs.first.id; // phone number doc ID
-  }
-
-  /// -------------------------------------------------------------
-  /// UPDATE USER LOCATION
-  /// -------------------------------------------------------------
-  Future<void> updateUserLocation(String city) async {
+  Future<String> loginUser(String phone) async {
     try {
       loading = true;
       notifyListeners();
 
-      final phone = await _resolvePhone();
+      String clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
 
-      await FirebaseFirestore.instance.collection("users").doc(phone).update({
+      // 🔥 Ensure the user is authenticated anonymously (needed for Firestore rules)
+      if (_auth.currentUser == null) {
+        await _auth.signInAnonymously();
+      }
+
+      // 1️⃣ Check if user exists
+      final doc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(clean)
+          .get();
+
+      if (doc.exists) {
+        loading = false;
+        notifyListeners();
+        return "existing";
+      }
+
+      // 2️⃣ Create new user
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(clean)
+          .set({
+        "phone": clean,
+        "isLocationSet": false,
+        "isProfileComplete": false,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      loading = false;
+      notifyListeners();
+      return "new";
+
+    } catch (e) {
+      debugPrint("Login Error: $e");
+      loading = false;
+      notifyListeners();
+      return "error";
+    }
+  }
+
+  /// -------------------------------------------------------------
+  /// UPDATE USER LOCATION  (phone passed directly)
+  /// -------------------------------------------------------------
+  Future<void> updateUserLocation(String phone, String city) async {
+    try {
+      loading = true;
+      notifyListeners();
+
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(phone)
+          .update({
         "city": city,
         "isLocationSet": true,
       });
@@ -93,16 +82,17 @@ Future<bool> loginWithoutOTP(String phone) async {
   }
 
   /// -------------------------------------------------------------
-  /// UPDATE USER PROFILE
+  /// SAVE USER PROFILE  (phone passed directly)
   /// -------------------------------------------------------------
-  Future<void> saveUserProfile(Map<String, dynamic> data) async {
+  Future<void> saveUserProfile(String phone, Map<String, dynamic> data) async {
     try {
       loading = true;
       notifyListeners();
 
-      final phone = await _resolvePhone();
-
-      await FirebaseFirestore.instance.collection("users").doc(phone).set({
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(phone)
+          .set({
         ...data,
         "isProfileComplete": true,
         "updatedAt": FieldValue.serverTimestamp(),

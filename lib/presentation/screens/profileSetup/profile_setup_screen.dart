@@ -101,8 +101,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 
-  /// SAVE PROFILE TO FIRESTORE
-  void submit() async {
+  /// SAVE PROFILE
+  void submit(String phone) async {
     if (firstName.text.isEmpty ||
         lastName.text.isEmpty ||
         email.text.isEmpty ||
@@ -127,15 +127,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "gender": gender,
     };
 
-    await auth.saveUserProfile(profileData);
+    await auth.saveUserProfile(phone, profileData);
 
-    // Go to home
-    Navigator.pushReplacementNamed(context, AppRoutes.home);
+    Navigator.pushReplacementNamed(
+      context,
+      AppRoutes.home,
+      arguments: phone,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthController>(context);
+
+    /// 🔥 Get phone number passed from LocationScreen
+    final String phone =
+        ModalRoute.of(context)!.settings.arguments as String;
 
     return Stack(
       children: [
@@ -194,7 +201,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    onPressed: submit,
+                    onPressed: () => submit(phone),
                     child: const Text(
                       "Continue",
                       style: TextStyle(fontSize: 18, color: Colors.white),
@@ -208,14 +215,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
         ),
 
-        // LOADER OVERLAY
         if (auth.loading)
           Container(
             color: Colors.black54,
             child: const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
-              ),
+              child: CircularProgressIndicator(color: Colors.white),
             ),
           ),
       ],

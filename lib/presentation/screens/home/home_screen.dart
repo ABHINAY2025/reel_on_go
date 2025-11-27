@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:reel_on_go/presentation/widgets/bottom_nav.dart';
 import 'package:reel_on_go/presentation/widgets/banner_slider.dart';
@@ -24,36 +23,35 @@ class _HomeScreenState extends State<HomeScreen> {
   String? firstName;
   bool loading = true;
 
+  late String phone;   // 🔥 store phone number
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     loadUser();
   }
 
-  /// 🔥 FETCH USER USING UID (anonymous login compatible)
+  /// 🔥 FETCH USER USING PHONE (NOT UID)
   Future<void> loadUser() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    phone = ModalRoute.of(context)!.settings.arguments as String;    // 🔥 FIXED
 
-  // Anonymous login → phone is stored in Firestore doc, not FirebaseAuth
-  // 1️⃣ Retrieve all docs where uid == current user.uid
-  final snap = await FirebaseFirestore.instance
-      .collection("users")
-      .where("uid", isEqualTo: user.uid)
-      .limit(1)
-      .get();
+    final doc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(phone)
+        .get();
 
-  if (snap.docs.isEmpty) {
-    print("⚠ No user doc found for UID ${user.uid}");
-    return;
+    if (!doc.exists) {
+      print("⚠ No user document found for phone: $phone");
+      setState(() => loading = false);
+      return;
+    }
+
+    final data = doc.data()!;
+    setState(() {
+      firstName = data["firstName"] ?? "User";
+      loading = false;
+    });
   }
-
-  final data = snap.docs.first.data();
-  setState(() {
-    firstName = data["firstName"] ?? "User";
-    loading = false;
-  });
-}
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               children: [
-                BookingDashboard(username: firstName ?? "User"),
+                BookingDashboard(
+                  username: firstName ?? "User",
+                  phone: phone,                // 🔥 FIXED
+                ),
                 const SizedBox(height: 30),
 
                 const BannerSlider(),
@@ -97,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            /// Floating Nav
+            /// BOTTOM NAVIGATION
             BottomNav(
               current: navIndex,
               onTap: (i) => setState(() => navIndex = i),

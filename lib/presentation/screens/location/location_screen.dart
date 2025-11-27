@@ -26,6 +26,10 @@ class _LocationScreenState extends State<LocationScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthController>(context);
 
+    /// 🔥 Get phone number that was passed from LoginScreen
+    final String phone =
+        ModalRoute.of(context)!.settings.arguments as String;
+
     return Stack(
       children: [
         Scaffold(
@@ -46,6 +50,7 @@ class _LocationScreenState extends State<LocationScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 10),
 
                   const Text(
@@ -60,7 +65,6 @@ class _LocationScreenState extends State<LocationScreen> {
                       itemCount: cities.length,
                       itemBuilder: (context, index) {
                         String city = cities[index];
-
                         bool isSelected = selectedCity == city;
 
                         return GestureDetector(
@@ -92,7 +96,8 @@ class _LocationScreenState extends State<LocationScreen> {
                                 ),
                                 const Spacer(),
                                 AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
+                                  duration:
+                                      const Duration(milliseconds: 300),
                                   width: 22,
                                   height: 22,
                                   decoration: BoxDecoration(
@@ -118,7 +123,7 @@ class _LocationScreenState extends State<LocationScreen> {
 
                   const SizedBox(height: 10),
 
-                  /// Continue Button
+                  /// CONTINUE BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -126,7 +131,8 @@ class _LocationScreenState extends State<LocationScreen> {
                         backgroundColor: selectedCity != null
                             ? const Color(0xFFFF5E1F)
                             : Colors.grey.shade800,
-                        minimumSize: const Size(double.infinity, 55),
+                        minimumSize:
+                            const Size(double.infinity, 55),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -134,16 +140,21 @@ class _LocationScreenState extends State<LocationScreen> {
                       onPressed: selectedCity == null
                           ? null
                           : () async {
-                              await auth.updateUserLocation(selectedCity!);
+                              /// 🔥 FIXED: Now passing both phone + city
+                              await auth.updateUserLocation(
+                                  phone, selectedCity!);
 
+                              /// Go to Profile Setup with phone
                               Navigator.pushReplacementNamed(
                                 context,
                                 AppRoutes.profileSetup,
+                                arguments: phone,
                               );
                             },
                       child: const Text(
                         "Continue",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                        style: TextStyle(
+                            fontSize: 18, color: Colors.white),
                       ),
                     ),
                   ),
@@ -155,12 +166,14 @@ class _LocationScreenState extends State<LocationScreen> {
           ),
         ),
 
-        // Loader overlay
+        /// LOADING OVERLAY
         if (auth.loading)
           Container(
             color: Colors.black54,
             child: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+              child: CircularProgressIndicator(
+                color: Colors.white,
+              ),
             ),
           ),
       ],
