@@ -11,19 +11,21 @@ import 'package:reel_on_go/presentation/widgets/BrandFooterSection.dart';
 import 'package:reel_on_go/presentation/bookings/booking_dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String phone;
+
+  const HomeScreen({super.key, required this.phone});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int navIndex = 0;
+  int navIndex = 1; // ⭐ Home tab index is 1
 
   String? firstName;
   bool loading = true;
 
-  late String phone;   // 🔥 store phone number
+  late String phone;
 
   @override
   void didChangeDependencies() {
@@ -31,9 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
     loadUser();
   }
 
-  /// 🔥 FETCH USER USING PHONE (NOT UID)
   Future<void> loadUser() async {
-    phone = ModalRoute.of(context)!.settings.arguments as String;    // 🔥 FIXED
+    phone = ModalRoute.of(context)!.settings.arguments as String;
 
     final doc = await FirebaseFirestore.instance
         .collection("users")
@@ -51,6 +52,45 @@ class _HomeScreenState extends State<HomeScreen> {
       firstName = data["firstName"] ?? "User";
       loading = false;
     });
+  }
+
+  // ⭐ NAVIGATION HANDLER (prevents stacking)
+  void handleNavTap(int index) {
+    if (index == navIndex) return; // already selected
+
+    switch (index) {
+      case 0: // More
+        Navigator.pushReplacementNamed(
+          context,
+          "/more",
+          arguments: phone,
+        );
+        break;
+
+      case 1: // Home
+        Navigator.pushReplacementNamed(
+          context,
+          "/home",
+          arguments: phone,
+        );
+        break;
+
+      case 2: // Explore
+        Navigator.pushReplacementNamed(
+          context,
+          "/explore",
+          arguments: phone,
+        );
+        break;
+
+      case 3: // Profile
+        Navigator.pushReplacementNamed(
+          context,
+          "/profile",
+          arguments: phone,
+        );
+        break;
+    }
   }
 
   @override
@@ -74,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 BookingDashboard(
                   username: firstName ?? "User",
-                  phone: phone,                // 🔥 FIXED
+                  phone: phone,
                 ),
                 const SizedBox(height: 30),
 
@@ -98,10 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            /// BOTTOM NAVIGATION
+            // ⭐ FIXED: Correct nav index + navigation
             BottomNav(
               current: navIndex,
-              onTap: (i) => setState(() => navIndex = i),
+              onTap: handleNavTap,
             ),
           ],
         ),

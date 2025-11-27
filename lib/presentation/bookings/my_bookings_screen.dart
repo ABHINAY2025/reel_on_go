@@ -1,3 +1,5 @@
+// lib/presentation/bookings/my_bookings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -5,7 +7,11 @@ import 'dart:convert';
 import './booking_Details_Screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
-  const MyBookingsScreen({super.key});
+  /// Accept phone from route if passed. If null, screen will try to read
+  /// phone from ModalRoute arguments inside didChangeDependencies.
+  final String? phone;
+
+  const MyBookingsScreen({super.key, this.phone});
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -18,34 +24,74 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   late TabController tabController;
   late String phone;
 
+  bool _fetchedOnce = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    phone = ModalRoute.of(context)!.settings.arguments as String;
+    // Use phone passed to widget if provided, otherwise read from route args.
+    final routePhone = ModalRoute.of(context)?.settings.arguments;
+    if (widget.phone != null) {
+      phone = widget.phone!;
+    } else if (routePhone is String) {
+      phone = routePhone;
+    } else {
+      // If we still don't have phone, avoid crash - set empty and show no bookings.
+      phone = "";
+    }
 
-    tabController = TabController(length: 2, vsync: this);
-    _fetchBookings();
+    // init tab controller once
+    if (!_fetchedOnce) {
+      tabController = TabController(length: 2, vsync: this);
+      _fetchBookings();
+      _fetchedOnce = true;
+    }
   }
 
   Future<void> _fetchBookings() async {
-    final url = Uri.parse("http://10.20.0.4:5008/api/bookings/user/$phone");
+    setState(() => loading = true);
 
-    final res = await http.get(url);
+    if (phone.isEmpty) {
+      // No phone available — nothing to fetch
+      bookings = [];
+      setState(() => loading = false);
+      return;
+    }
 
-    if (res.statusCode == 200) {
-      bookings = jsonDecode(res.body);
+    try {
+      final url = Uri.parse("http://10.20.0.4:5008/api/bookings/user/$phone");
+      final res = await http.get(url);
+
+      if (res.statusCode == 200) {
+        bookings = jsonDecode(res.body);
+      } else {
+        // non-200 — treat as empty or handle error
+        bookings = [];
+      }
+    } catch (e) {
+      // network error -> keep bookings empty
+      bookings = [];
+      debugPrint("Fetch bookings error: $e");
     }
 
     setState(() => loading = false);
   }
 
-  List<dynamic> get upcoming => bookings
-      .where((b) => b["status"] == "pending" || b["status"] == "confirmed")
-      .toList();
+  List<dynamic> get upcoming =>
+      bookings.where((b) =>
+          (b["status"] ?? "") == "pending" ||
+          (b["status"] ?? "") == "confirmed"
+      ).toList();
 
   List<dynamic> get completed =>
-      bookings.where((b) => b["status"] == "completed").toList();
+      bookings.where((b) => (b["status"] ?? "") == "completed").toList();
+
+  @override
+  void dispose() {
+    tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +101,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         title: const Text("My Bookings"),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchBookings,
+            tooltip: "Refresh",
+          )
+        ],
       ),
       body: loading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.orange),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.orange))
           : Column(
               children: [
                 Padding(
@@ -76,6 +127,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     ),
                   ),
                 ),
+
                 TabBar(
                   controller: tabController,
                   labelColor: Colors.orange,
@@ -86,6 +138,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     Tab(text: "Completed"),
                   ],
                 ),
+
                 Expanded(
                   child: TabBarView(
                     controller: tabController,
@@ -132,77 +185,56 @@ class BookingCard extends StatelessWidget {
 
   const BookingCard({super.key, required this.booking});
 
-  /// --- SUPPORT ALL TIMESTAMP FORMATS ---
-  DateTime? getCreatedAt(dynamic raw) {
-    if (raw == null) return null;
+  // Try to parse different createdAt shapes: ISO string or Firestore map
+  DateTime? _parseCreatedAt(dynamic value) {
+    if (value == null) return null;
 
-    // Case 1: Firestore JSON → {_seconds, _nanoseconds}
-    if (raw is Map && raw.containsKey("_seconds")) {
-      return DateTime.fromMillisecondsSinceEpoch(
-        raw["_seconds"] * 1000 +
-            ((raw["_nanoseconds"] ?? 0) ~/ 1000000),
-        isUtc: true,
-      ).toLocal();
-    }
+    try {
+      if (value is String) {
+        return DateTime.parse(value).toLocal();
+      }
 
-    // Case 2: Sometimes Spring returns {seconds, nanoseconds}
-    if (raw is Map && raw.containsKey("seconds")) {
-      return DateTime.fromMillisecondsSinceEpoch(
-        raw["seconds"] * 1000 +
-            ((raw["nanoseconds"] ?? 0) ~/ 1000000),
-        isUtc: true,
-      ).toLocal();
-    }
+      if (value is Map && value.containsKey("_seconds")) {
+        final seconds = value["_seconds"] as int;
+        final nanos = (value["_nanoseconds"] ?? 0) as int;
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000 + nanos ~/ 1000000, isUtc: true).toLocal();
+      }
 
-    // Case 3: ISO string
-    if (raw is String) {
-      try {
-        return DateTime.parse(raw).toLocal();
-      } catch (_) {}
+      if (value is int) {
+        // epoch ms or s — try to detect
+        if (value > 9999999999) {
+          // milliseconds
+          return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+        } else {
+          // seconds
+          return DateTime.fromMillisecondsSinceEpoch(value * 1000).toLocal();
+        }
+      }
+    } catch (e) {
+      debugPrint("createdAt parse error: $e");
     }
 
     return null;
   }
 
-  String monthName(int m) {
-    const months = [
-      "",
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ];
-    return months[m];
-  }
-
-  String formatFull(DateTime d) {
+  String _formatDateTime(DateTime d) {
+    final months = ["", "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     int hr = d.hour;
-    String suffix = hr >= 12 ? "PM" : "AM";
+    final min = d.minute.toString().padLeft(2, '0');
+    final suffix = hr >= 12 ? "PM" : "AM";
     if (hr == 0) hr = 12;
     if (hr > 12) hr -= 12;
-
-    return "${d.day.toString().padLeft(2, '0')} "
-        "${monthName(d.month)} "
-        "${d.year} at "
-        "$hr:${d.minute.toString().padLeft(2, '0')} $suffix";
+    return "${d.day.toString().padLeft(2,'0')} ${months[d.month]} ${d.year}, $hr:$min $suffix";
   }
 
   @override
   Widget build(BuildContext context) {
     final plan = booking["plan"] ?? {};
-    final String planTitle = plan["title"] ?? "Unknown Plan";
+    final planTitle = plan["title"] ?? "Unknown Plan";
 
-    final DateTime? date = getCreatedAt(booking["createdAt"]);
-    final String bookedOn =
-        date == null ? "Unknown date" : formatFull(date);
+    final createdAtRaw = booking["createdAt"];
+    final createdDate = _parseCreatedAt(createdAtRaw);
+    final bookedOn = createdDate != null ? _formatDateTime(createdDate) : (createdAtRaw?.toString() ?? "Unknown date");
 
     return GestureDetector(
       onTap: () {
@@ -222,11 +254,10 @@ class BookingCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 24,
               backgroundColor: Colors.white10,
-              child:
-                  const Icon(Icons.camera_alt, color: Colors.orange, size: 26),
+              child: Icon(Icons.camera_alt, color: Colors.orange, size: 26),
             ),
 
             const SizedBox(width: 12),
@@ -238,26 +269,23 @@ class BookingCard extends StatelessWidget {
                   Text(
                     planTitle,
                     style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                        color: Colors.orange,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600),
                   ),
 
                   const SizedBox(height: 4),
 
                   Text(
                     "Booked on: $bookedOn",
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 12),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
 
                   const SizedBox(height: 6),
 
                   Text(
-                    "Mode: ${booking["shootMode"] ?? "N/A"}",
-                    style:
-                        const TextStyle(color: Colors.white60, fontSize: 12),
+                    "Mode: ${booking["shootMode"] ?? 'N/A'}",
+                    style: const TextStyle(color: Colors.white60, fontSize: 12),
                   ),
                 ],
               ),
@@ -267,13 +295,13 @@ class BookingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  "₹${booking["total"]}",
+                  "₹${booking["total"] ?? booking["subtotal"] ?? '0'}",
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  booking["status"],
+                  (booking["status"] ?? "pending").toString(),
                   style: TextStyle(
                     color: booking["status"] == "completed"
                         ? Colors.green

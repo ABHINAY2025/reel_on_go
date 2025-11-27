@@ -19,6 +19,7 @@ import 'widgets/submit_button.dart';
 import 'widgets/suggest_song_field.dart';
 import 'widgets/shoot_mode_selector.dart';
 import 'widgets/shoot_requirements_field.dart';
+import '../../bookings/book_now_screen.dart';
 
 import 'confirm_address_screen.dart';
 import 'helpers/price_utils.dart';
@@ -297,9 +298,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               PlanSummaryCard(
                 plan: plan,
-                onChange: () =>
-                    Navigator.pushReplacementNamed(context, "/bookNow"),
-                color: kPrimaryOrange,
+                onChange: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BookNowScreen(phone: widget.phone),
+                        ),
+                        (route) => route.isFirst,   // keep only first screen in stack
+                      );
+                    },
+              color: kPrimaryOrange,
               ),
               const SizedBox(height: 18),
 

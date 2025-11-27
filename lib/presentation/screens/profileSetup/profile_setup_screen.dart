@@ -5,7 +5,9 @@ import 'package:reel_on_go/core/routes/app_routes.dart';
 import 'package:reel_on_go/logic/controllers/auth_controller.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final String phone;
+
+  const ProfileSetupScreen({super.key, required this.phone});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();

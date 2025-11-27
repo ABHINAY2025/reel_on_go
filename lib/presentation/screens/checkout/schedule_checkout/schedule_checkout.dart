@@ -235,8 +235,7 @@ class _ScheduleCheckoutScreenState extends State<ScheduleCheckoutScreen> {
         showTopNotification("Failed! Try again");
       }
     } catch (e) {
-      showTopNotification("Network error" + e.toString());
-      print(e);
+      showTopNotification("Network error");
       setState(() => loading = false);
     }
   }

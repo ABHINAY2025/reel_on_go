@@ -17,10 +17,7 @@ class BottomNav extends StatelessWidget {
         height: 72,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
-
-          /// ⭐ Gray tinted glass instead of transparent white
           color: Colors.grey.withOpacity(0.25),
-
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.40),
@@ -36,7 +33,7 @@ class BottomNav extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
 
             child: BottomNavigationBar(
-              backgroundColor: const Color.fromARGB(255, 86, 86, 86).withOpacity(0.80), // darker gray tint
+              backgroundColor: const Color.fromARGB(255, 86, 86, 86).withOpacity(0.80),
               elevation: 0,
               type: BottomNavigationBarType.fixed,
 
@@ -54,14 +51,19 @@ class BottomNav extends StatelessWidget {
                   icon: Icon(Icons.auto_awesome),
                   label: "More",
                 ),
+
+                /// ⭐ EXPLORE → HOME (new icon + new label)
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.search_rounded),
-                  label: "Explore",
+                  icon: Icon(Icons.home_rounded),
+                  label: "Home",
                 ),
+
+                /// ⭐ BOOKINGS → EXPLORE (same icon, only rename)
                 BottomNavigationBarItem(
                   icon: Icon(Icons.video_camera_back_rounded),
-                  label: "Bookings",
+                  label: "Explore",
                 ),
+
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_rounded),
                   label: "Profile",
